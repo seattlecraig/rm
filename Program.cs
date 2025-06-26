@@ -25,7 +25,7 @@ namespace RmClone
         /*
          * Main method
          * 
-         * parses command line arguments, expands wildcards, and deletes files or directories
+         * parses command line arguments, expands wildcards, and the deletes files or directories
          * according to the specified options.
          */
         static void Main(string[] args)
