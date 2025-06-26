@@ -22,6 +22,12 @@ namespace RmClone
         static bool force = false;
         static bool verbose = false;
 
+        /*
+         * Main method
+         * 
+         * parses command line arguments, expands wildcards, and deletes files or directories
+         * according to the specified options.
+         */
         static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -65,6 +71,9 @@ namespace RmClone
                 return;
             }
 
+            /*
+             * get all the targets, and delete them!
+             */
             var targets = ExpandArguments(inputTargets);
 
             foreach (var target in targets)
@@ -98,8 +107,14 @@ namespace RmClone
                         PrintError($"rm: cannot remove '{target}': {ex.Message}");
                 }
             }
-        }
 
+        } /* Main */
+
+        /*
+         * ExpandArguments takes a list of arguments and expands any wildcards
+         * like *.txt or dir/* to the actual file system entries in the current directory.
+         * If no matches are found, it returns the original argument.
+         */
         static IEnumerable<string> ExpandArguments(IEnumerable<string> args)
         {
             var cwd = Directory.GetCurrentDirectory();
@@ -124,8 +139,13 @@ namespace RmClone
                     yield return arg;
                 }
             }
-        }
+        } /* ExpandArguments */
 
+        /*
+         * ShowHelp 
+         * 
+         * displays the usage information for the rm command.  
+         */
         static void ShowHelp()
         {
             Console.WriteLine(@"
@@ -141,25 +161,37 @@ Colors:
   Green = success
   Red   = failure
 ");
-        }
+        } /* ShowHelp */
 
+
+        /*
+         * PrintSuccess and PrintError
+         * 
+         * show results of delete operations in color
+         */
         static void PrintSuccess(string message)
         {
             Console.WriteLine($"\x1b[32m{message}\x1b[0m");
-        }
+        } /* PrintSuccess */
 
         static void PrintError(string message)
         {
             Console.Error.WriteLine($"\x1b[31m{message}\x1b[0m");
-        }
+        } /* PrintError */
 
+        /*
+         * EnableVirtualTerminal
+         * 
+         * thunks over to the Windows API to enable virtual terminal processing
+         */
         static void EnableVirtualTerminal()
         {
             const int STD_OUTPUT_HANDLE = -11;
             var handle = GetStdHandle(STD_OUTPUT_HANDLE);
             GetConsoleMode(handle, out int mode);
             SetConsoleMode(handle, mode | 0x0004);
-        }
+
+        } /* EnableVirtualTerminal */
 
         [DllImport("kernel32.dll")] static extern IntPtr GetStdHandle(int nStdHandle);
         [DllImport("kernel32.dll")] static extern bool GetConsoleMode(IntPtr hConsoleHandle, out int lpMode);
