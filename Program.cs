@@ -1,11 +1,12 @@
 ﻿/*
  * program.cs 
  * 
- * replicates the unix DU command
+ * replicates the unix RM command
  * 
  *  Date        Author          Description
  *  ====        ======          ===========
  *  06-26-25    Craig           initial implementation
+ *  10-21-25    Craig           added -f force attribute removal
  *
  */
 using System;
@@ -35,7 +36,8 @@ namespace RmClone
 
             if (args.Length == 0)
             {
-                Console.Error.WriteLine("rm: missing operand");
+                ShowHelp();
+                //Console.Error.WriteLine("rm: missing operand");
                 return;
             }
 
@@ -67,7 +69,7 @@ namespace RmClone
 
             if (inputTargets.Count == 0)
             {
-                Console.Error.WriteLine("rm: missing operand");
+                ShowHelp();
                 return;
             }
 
@@ -82,6 +84,10 @@ namespace RmClone
                 {
                     if (File.Exists(target))
                     {
+                        if (force)
+                        {
+                            RemoveFileAttributes(target);
+                        }
                         File.Delete(target);
                         if (verbose) PrintSuccess($"removed file: {target}");
                     }
@@ -93,6 +99,10 @@ namespace RmClone
                             continue;
                         }
 
+                        if (force)
+                        {
+                            RemoveDirectoryAttributes(target);
+                        }
                         Directory.Delete(target, true);
                         if (verbose) PrintSuccess($"removed directory: {target}");
                     }
@@ -109,6 +119,77 @@ namespace RmClone
             }
 
         } /* Main */
+
+        /*
+         * RemoveFileAttributes
+         * 
+         * Removes Hidden, System, and ReadOnly attributes from a file
+         * to allow forced deletion with -f option
+         */
+        static void RemoveFileAttributes(string filePath)
+        {
+            try
+            {
+                FileAttributes attributes = File.GetAttributes(filePath);
+
+                // Remove ReadOnly, Hidden, and System attributes
+                attributes &= ~FileAttributes.ReadOnly;
+                attributes &= ~FileAttributes.Hidden;
+                attributes &= ~FileAttributes.System;
+
+                File.SetAttributes(filePath, attributes);
+            }
+            catch
+            {
+                // Silently ignore attribute removal failures when using -f
+            }
+        } /* RemoveFileAttributes */
+
+        /*
+         * RemoveDirectoryAttributes
+         * 
+         * Recursively removes Hidden, System, and ReadOnly attributes from a directory
+         * and all its contents to allow forced deletion with -f and -r options
+         */
+        static void RemoveDirectoryAttributes(string dirPath)
+        {
+            try
+            {
+                // Remove attributes from the directory itself
+                FileAttributes attributes = File.GetAttributes(dirPath);
+                attributes &= ~FileAttributes.ReadOnly;
+                attributes &= ~FileAttributes.Hidden;
+                attributes &= ~FileAttributes.System;
+                File.SetAttributes(dirPath, attributes);
+
+                // Recursively process all files
+                foreach (var file in Directory.GetFiles(dirPath, "*", SearchOption.AllDirectories))
+                {
+                    RemoveFileAttributes(file);
+                }
+
+                // Recursively process all subdirectories
+                foreach (var subDir in Directory.GetDirectories(dirPath, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        FileAttributes dirAttributes = File.GetAttributes(subDir);
+                        dirAttributes &= ~FileAttributes.ReadOnly;
+                        dirAttributes &= ~FileAttributes.Hidden;
+                        dirAttributes &= ~FileAttributes.System;
+                        File.SetAttributes(subDir, dirAttributes);
+                    }
+                    catch
+                    {
+                        // Silently ignore attribute removal failures when using -f
+                    }
+                }
+            }
+            catch
+            {
+                // Silently ignore attribute removal failures when using -f
+            }
+        } /* RemoveDirectoryAttributes */
 
         /*
          * ExpandArguments takes a list of arguments and expands any wildcards
@@ -152,7 +233,7 @@ namespace RmClone
 Usage: rm [options] <files or directories...>
 Options:
   -r       : recursive delete (required for directories)
-  -f       : force (suppress errors if not found)
+  -f       : force (suppress errors and remove read-only/hidden/system attributes)
   -v       : verbose output
   -?       : display this help
 
