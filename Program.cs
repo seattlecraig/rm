@@ -45,25 +45,43 @@ namespace RmClone
 
             foreach (var arg in args)
             {
-                switch (arg)
+                // --help is a long option; handle it before flag bundling
+                if (arg == "--help")
                 {
-                    case "-r":
-                    case "-R":
-                        recursive = true;
-                        break;
-                    case "-f":
-                        force = true;
-                        break;
-                    case "-v":
-                        verbose = true;
-                        break;
-                    case "-?":
-                    case "--help":
-                        ShowHelp();
-                        return;
-                    default:
-                        inputTargets.Add(arg);
-                        break;
+                    ShowHelp();
+                    return;
+                }
+
+                // A single "-" is not an option; treat it as a target
+                if (arg.Length > 1 && arg[0] == '-' && arg[1] != '-')
+                {
+                    // Bundled short flags, e.g. -rf, -rvf, are parsed char by char
+                    foreach (var flag in arg.Substring(1))
+                    {
+                        switch (flag)
+                        {
+                            case 'r':
+                            case 'R':
+                                recursive = true;
+                                break;
+                            case 'f':
+                                force = true;
+                                break;
+                            case 'v':
+                                verbose = true;
+                                break;
+                            case '?':
+                                ShowHelp();
+                                return;
+                            default:
+                                Console.Error.WriteLine($"rm: invalid option -- '{flag}'");
+                                return;
+                        }
+                    }
+                }
+                else
+                {
+                    inputTargets.Add(arg);
                 }
             }
 
